@@ -140,6 +140,8 @@ class Compel:
             else:
                 cond_tensor.append(output)
 
+        return cond_tensor
+
         cond_tensor = self.pad_conditioning_tensors_to_same_length(conditionings=cond_tensor)
         cond_tensor = torch.cat(cond_tensor)
 
@@ -192,6 +194,9 @@ class Compel:
                 [padded_empty_conditioning, _] = self.pad_conditioning_tensors_to_same_length([empty_conditioning, this_conditioning])
                 this_conditioning = padded_empty_conditioning + (this_conditioning - padded_empty_conditioning) * weight
             to_concat.append(this_conditioning)
+
+        return to_concat, options
+
         assert all(len(c.shape) == len(to_concat[0].shape) for c in to_concat)
         if len(to_concat[0].shape) == 2:
             token_dim = 0
