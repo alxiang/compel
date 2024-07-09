@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Callable, Union, Optional, Any
 
 import torch
-from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection, T5Tokenizer
+from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection
 from typing import List, Tuple
 
 __all__ = ["EmbeddingsProvider", "DownweightMode", "ReturnedEmbeddingsType"]
@@ -591,10 +591,6 @@ class EmbeddingsProvider:
                                                 attention_mask,
                                                 output_hidden_states=needs_hidden_states,
                                                 return_dict=True)
-        
-        # https://github.com/huggingface/diffusers/blob/c586aadef6bb66d355fa40a2b95a0bea8a6fe79c/src/diffusers/pipelines/hunyuandit/pipeline_hunyuandit.py#L242
-        return text_encoder_output[0]
-
         if self.returned_embeddings_type is ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED:
             penultimate_hidden_state = text_encoder_output.hidden_states[-2]
             return penultimate_hidden_state
