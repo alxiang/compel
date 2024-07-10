@@ -256,6 +256,9 @@ class Compel:
             raise ValueError(f"embeddings can only be made from FlattenedPrompts, got {type(prompt).__name__} instead")
         fragments = [x.text for x in prompt.children]
         weights = [x.weight for x in prompt.children]
+
+        print("Prompt fragments: %s" % (fragments))
+        print("Prompt weights: %s" % (weights))
         return self.conditioning_provider.get_embeddings_for_weighted_prompt_fragments(
             text_batch=[fragments], fragment_weights_batch=[weights],
             should_return_tokens=should_return_tokens, device=self.device)

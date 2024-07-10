@@ -585,8 +585,16 @@ class EmbeddingsProvider:
 
     def _encode_token_ids_to_embeddings(self, token_ids: torch.Tensor,
                                         attention_mask: Optional[torch.Tensor]=None) -> torch.Tensor:
+        # Only verified for hydit's tokenizers
+        if attention_mask is None:
+            attention_mask = (token_ids != 0).long()
+
         needs_hidden_states = (self.returned_embeddings_type == ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NORMALIZED or
                                self.returned_embeddings_type == ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED)
+        
+        print(f"token_ids ({token_ids.shape=}): ", token_ids)
+        print(f"attention_mask ({attention_mask.shape=}): ", attention_mask)
+
         text_encoder_output = self.text_encoder(token_ids,
                                                 attention_mask,
                                                 output_hidden_states=needs_hidden_states,
@@ -701,31 +709,40 @@ class EmbeddingsProvider:
 
 
     def remove_bos_eos(self, token_ids: list[Union[int,Any]]):
-        if len(token_ids)>0 and type(token_ids[0]) is int:
-            if self.needs_bos and token_ids[0] != self.tokenizer.bos_token_id:
-                raise ValueError(f"attempt to remove bos marker from a token sequence that does not have it: {token_ids}")
-            if self.needs_eos and token_ids[-1] != self.tokenizer.eos_token_id:
-                # This is hydit and eos token is at the beginning
-                return token_ids[1:]
-
-                raise ValueError(f"attempt to remove eos marker from a token sequence that does not have it: {token_ids}")
+        # if len(token_ids)>0 and type(token_ids[0]) is int:
+        #     if self.needs_bos and token_ids[0] != self.tokenizer.bos_token_id:
+        #         raise ValueError(f"attempt to remove bos marker from a token sequence that does not have it: {token_ids}")
+        #     if self.needs_eos and token_ids[-1] != self.tokenizer.eos_token_id:
+        #         raise ValueError(f"attempt to remove eos marker from a token sequence that does not have it: {token_ids}") 
         start_idx = 1 if self.needs_bos else 0
-        end_idx = -1 if self.needs_eos else None
-        return token_ids[start_idx:end_idx]
+        end_idx = token_ids.index(self.tokenizer.eos_token_id) if self.needs_eos else None
+        if end_idx is not None:
+            token_ids.pop(end_idx)
+        # end_idx = -1 if self.needs_eos else None
+        return token_ids[start_idx:]
 
     def add_bos_eos_if_required(self, token_ids: list[Union[int,Any]], bos_value=None, eos_value=None):
-        if len(token_ids)>0 and type(token_ids[0]) is int:
-            if self.needs_bos and token_ids[0] == self.tokenizer.bos_token_id:
-                raise ValueError(f"asked to prepend bos marker to a token sequence that already has it")
-            if self.needs_eos and token_ids[-1] == self.tokenizer.eos_token_id:
-                raise ValueError(f"asked to append eos marker to a token sequence that already has it")
+        # if len(token_ids)>0 and type(token_ids[0]) is int:
+        #     if self.needs_bos and token_ids[0] == self.tokenizer.bos_token_id:
+        #         raise ValueError(f"asked to prepend bos marker to a token sequence that already has it")
+        #     if self.needs_eos and token_ids[-1] == self.tokenizer.eos_token_id:
+        #         raise ValueError(f"asked to append eos marker to a token sequence that already has it")
         prepend = ([self.tokenizer.bos_token_id if bos_value is None else bos_value]
                    if self.needs_bos
                    else [])
-        append = ([self.tokenizer.eos_token_id if eos_value is None else eos_value]
-                  if self.needs_eos
-                  else [])
-        return prepend + token_ids + append
+        
+        token_ids = prepend + token_ids
+
+        if self.needs_eos:
+            eos_token = self.tokenizer.eos_token_id if eos_value is None else eos_value
+            for i in range(len(token_ids)):
+                if (type(eos_token) == int and token_ids[i] == 0) or (type(eos_token) == tuple and token_ids[i][0] == 0):
+                    token_ids.insert(i, eos_token)
+                    break
+            else:
+                token_ids.append(eos_token)
+
+        return token_ids
 
 
 class EmbeddingsProviderMulti:
